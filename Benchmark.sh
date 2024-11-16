@@ -7,12 +7,12 @@ queues=("CoarseSet" "FineSet" "LazySet" "LockFreeSet" "OptimisticSet")
 threads=(4 8 12 16 20 24 32 40)
 
 readPercentage=(20 40 60 80)
-for set_type in "${queues[@]}"; do
-    for thread_count in "${threads[@]}"; do
-        for contains_percentage in "${readPercentage[@]}"; do
-            echo "$queue for $thread_count threads with $readPercentage% read operation"
-            contains_decimal=$(echo "scale=2; $contains_percentage" | bc)
-            java -cp build/libs/homework5.jar edu.vt.ece.hw5.Benchmark "$set_type" "$thread_count" "$contains_decimal"
+for queue in "${queues[@]}"; do
+    for thread in "${threads[@]}"; do
+        for percentage in "${readPercentage[@]}"; do
+            echo "$queue for $thread threads with $percentage% read operation"
+            contains_decimal=$(echo "scale=2; $readPercentage" | bc)
+            java -cp build/libs/homework5.jar edu.vt.ece.hw5.Benchmark "$queue" "$thread" "$contains_decimal"
         done
     done
 done
