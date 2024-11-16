@@ -1,6 +1,6 @@
 package edu.vt.ece.hw5.sets;
 
-public class CoarseSet<T> implements Set<T>{
+public class CoarseSet<T> implements Set<T> {
     private final Node<T> head;
 
     public CoarseSet() {
@@ -9,36 +9,65 @@ public class CoarseSet<T> implements Set<T>{
     }
 
     @Override
-    public boolean add(T item) {
-        /* YOUR IMPLEMENTATION HERE */
-        
-        /* Hint: Look into object type's hashCode() method. */
-        /* Hint: Look into synchronized methods. */
+    public synchronized boolean add(T item) {
+        int key = item.hashCode();
+        Node<T> pred = head;
+        Node<T> curr = pred.next;
+        while (curr.key < key) {
+            pred = curr;
+            curr = curr.next;
+        }
+        if (key == curr.key) {
+            return false;
+        } else {
+            Node<T> newNode = new Node<>(item, curr);
+            pred.next = newNode;
+            return true;
+        }
     }
 
     @Override
-    public boolean remove(T item) {
-        /* YOUR IMPLEMENTATION HERE */
+    public synchronized boolean remove(T item) {
+        int key = item.hashCode();
+        Node<T> pred = head;
+        Node<T> curr = pred.next;
+        while (curr.key < key) {
+            pred = curr;
+            curr = curr.next;
+        }
+        if (key == curr.key) {
+            pred.next = curr.next;
+            return true;
+        } else {
+            return false;
+        }
     }
 
     @Override
-    public boolean contains(T item) {
-        /* YOUR IMPLEMENTATION HERE */
+    public synchronized boolean contains(T item) {
+        int key = item.hashCode();
+        Node<T> curr = head.next;
+        while (curr.key < key) {
+            curr = curr.next;
+        }
+        return (key == curr.key);
     }
 
     private static class Node<U> {
-        int key;
+        final int key;
         Node<U> next;
+        final U item;
 
         public Node(U item, Node<U> next) {
+            this.item = item;
             this.key = item.hashCode();
             this.next = next;
         }
 
         public Node(int key) {
+            this.item = null;
             this.key = key;
-            next = null;
+            this.next = null;
         }
-    }
     }
 }

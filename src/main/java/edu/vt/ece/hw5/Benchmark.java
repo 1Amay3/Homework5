@@ -1,52 +1,69 @@
 package edu.vt.ece.hw5;
 
-import java.util.Arrays;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadLocalRandom;
 
-import edu.vt.ece.hw5.sets.CoarseSet;
-import edu.vt.ece.hw5.sets.FineSet;
-import edu.vt.ece.hw5.sets.LazySet;
-import edu.vt.ece.hw5.sets.LockFreeSet;
-import edu.vt.ece.hw5.sets.OptimisticSet;
-import edu.vt.ece.hw5.sets.Set;
+import edu.vt.ece.hw5.sets.*;
 
 public class Benchmark {
     private static final int UPPER_BOUND = 100;
     private static final int ITERATIONS = 10000;
-    private static final int BYTE_PADDING = 64;      // To avoid false sharing.
-    private static final float ADD_LIMIT = 0.1f;     // Modify this per your requirement.
-    private static final float REMOVE_LIMIT = 0.2f;  // Modify this per your requirement.
+    private static final int BYTE_PADDING = 64;
 
     private static Set<Integer> mySet;
-    private static boolean[] containsResults;
+    private static volatile boolean[] containsResults;
 
-    public static void main(String[] args) throws Throwable {
-        mySet = getSet(args[0]); // SetType
-        int threadCount = Integer.parseInt(args[1]); // ThreadCount
+    private static float ADD_LIMIT;
+    private static float REMOVE_LIMIT;
 
-        containsResults = new boolean[threadCount * BYTE_PADDING];
-        List<Callable<Long>> calls = getCallables(threadCount);
-        ExecutorService excs = Executors.newFixedThreadPool(threadCount);
-        
-        long nanos = 0;
-        for (Future<Long> f : excs.invokeAll(calls)) {
-            try {
-                nanos += f.get();
-            } catch (ExecutionException e) {
-                throw e.getCause(); 
-            }
+    public static void main(String[] args) throws Exception {
+        if (args.length != 3) {
+            System.out.println("Usage: java Benchmark <setType> <threadCount> <containsPercentage>");
+            return;
         }
 
-        System.out.println(Arrays.toString(containsResults));
-        System.out.println(nanos);
+        String setType = args[0];
+        int threadCount = Integer.parseInt(args[1]);
+        float containsPercentage = Float.parseFloat(args[2]);
+
+        runBenchmark(setType, threadCount, containsPercentage);
+    }
+
+    private static void runBenchmark(String setType, int threadCount, float containsPercentage) throws Exception {
+        ADD_LIMIT = (1 - containsPercentage) / 2;
+        REMOVE_LIMIT = ADD_LIMIT + (1 - containsPercentage) / 2;
+
+        mySet = getSet(setType);
+        containsResults = new boolean[threadCount * BYTE_PADDING];
+
+        List<Callable<Long>> calls = getCallables(threadCount);
+        ExecutorService excs = Executors.newFixedThreadPool(threadCount);
+
+        long startTime = System.nanoTime();
+        List<Future<Long>> futures = excs.invokeAll(calls);
+        long endTime = System.nanoTime();
+
+        long totalTime = 0;
+        for (Future<Long> future : futures) {
+            totalTime += future.get();
+        }
+
+        double throughput = (double) (threadCount * ITERATIONS) / ((endTime - startTime) / 1_000_000_000.0);
+
+        System.out.printf("SetType: %s, Threads: %d, Contains%%: %.2f, Throughput: %.2f ops/sec%n",
+                setType, threadCount, containsPercentage, throughput);
+
+        writeResultToCSV(setType, threadCount, containsPercentage, throughput);
+
+        excs.shutdown();
     }
 
     private static Set<Integer> getSet(String setType) {
@@ -61,31 +78,53 @@ public class Benchmark {
                 return new LockFreeSet<>();
             case OptimisticSet:
                 return new OptimisticSet<>();
+            default:
+                throw new IllegalArgumentException("Unknown set type: " + setType);
         }
-
-        return null;
     }
 
     private static List<Callable<Long>> getCallables(int threadCount) {
         List<Callable<Long>> calls = new ArrayList<>(threadCount);
-
         for (int i = 0; i < threadCount; i++) {
-            final int x = i;
-            calls.add(() -> doStuff(x));
+            final int index = i;
+            calls.add(() -> doStuff(index));
         }
-
         return calls;
     }
 
-    /* Invoke operations of set: add, remove, contains based on configurable
-    ADD_LIMIT and REMOVE_LIMIT.
-
-    Hint: Use System.nanoTime and ThreadLocalRandom.current for execution time
-    and Random number generation (for randomizing set operations). */
     private static long doStuff(int index) {
-        
-        /* YOUR IMPLEMENTATION HERE */
+        ThreadLocalRandom random = ThreadLocalRandom.current();
+        long startTime = System.nanoTime();
 
-        return //Execution time;
+        for (int i = 0; i < ITERATIONS; i++) {
+            float operation = random.nextFloat();
+            int value = random.nextInt(UPPER_BOUND);
+
+            if (operation < ADD_LIMIT) {
+                mySet.add(value);
+            } else if (operation < REMOVE_LIMIT) {
+                mySet.remove(value);
+            } else {
+                boolean result = mySet.contains(value);
+                containsResults[index * BYTE_PADDING] = result;
+            }
+        }
+
+        long endTime = System.nanoTime();
+        return endTime - startTime;
+    }
+
+    private static void writeResultToCSV(String setType, int threadCount, float containsPercentage, double throughput) {
+        String fileName = "benchmark_results.csv";
+        boolean fileExists = new File(fileName).exists();
+
+        try (FileWriter writer = new FileWriter(fileName, true)) {
+            if (!fileExists) {
+                writer.write("SetType,ThreadCount,ContainsPercentage,Throughput\n");
+            }
+            writer.write(String.format("%s,%d,%.2f,%.2f\n", setType, threadCount, containsPercentage, throughput));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
