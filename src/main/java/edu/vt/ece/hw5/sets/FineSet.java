@@ -13,24 +13,24 @@ public class FineSet<T> implements Set<T> {
 
     @Override
     public boolean add(T item) {
-        int key = item.hashCode();
+        int key=item.hashCode();
         head.lock();
-        Node<T> pred = head;
+        Node<T> pred=head;
         try {
-            Node<T> curr = pred.next;
+            Node<T> curr=pred.next;
             curr.lock();
             try {
-                while (curr.key < key) {
+                while(curr.key<key){
                     pred.unlock();
-                    pred = curr;
-                    curr = curr.next;
+                    pred=curr;
+                    curr=curr.next;
                     curr.lock();
                 }
-                if (curr.key == key) {
+                if (curr.key==key) {
                     return false;
                 } else {
                     Node<T> newNode = new Node<>(item, curr);
-                    pred.next = newNode;
+                    pred.next=newNode;
                     return true;
                 }
             } finally {
@@ -45,9 +45,9 @@ public class FineSet<T> implements Set<T> {
     public boolean remove(T item) {
         int key = item.hashCode();
         head.lock();
-        Node<T> pred = head;
+        Node<T> pred=head;
         try {
-            Node<T> curr = pred.next;
+            Node<T> curr=pred.next;
             curr.lock();
             try {
                 while (curr.key < key) {
@@ -93,17 +93,19 @@ public class FineSet<T> implements Set<T> {
         Node<U> next;
         final U item;
 
+        public Node(int key) {
+            this.item = null;
+            this.key = key;
+            this.next = null;
+        }
+        
         public Node(U item, Node<U> next) {
             this.item = item;
             this.key = item.hashCode();
             this.next = next;
         }
 
-        public Node(int key) {
-            this.item = null;
-            this.key = key;
-            this.next = null;
-        }
+        
 
         void lock() { lock.lock(); }
         void unlock() { lock.unlock(); }
