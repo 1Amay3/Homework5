@@ -115,7 +115,7 @@ public class Benchmark {
     }
 
     private static void writeResultToCSV(String setType, int threadCount, float containsPercentage, double throughput) {
-        String fileName = "benchmark_results.csv";
+        String fileName = "benchmark.csv";
         boolean fileExists = new File(fileName).exists();
 
         try (FileWriter writer = new FileWriter(fileName, true)) {
