@@ -17,30 +17,23 @@ public class Benchmark {
     private static final int UPPER_BOUND = 100;
     private static final int ITERATIONS = 10000;
     private static final int BYTE_PADDING = 64;
-
     private static Set<Integer> mySet;
     private static volatile boolean[] containsResults;
-
     private static float ADD_LIMIT;
     private static float REMOVE_LIMIT;
-
     public static void main(String[] args) throws Exception {
         if (args.length != 3) {
             System.out.println("Usage: java Benchmark <setType> <threadCount> <containsPercentage>");
             return;
         }
-
         String setType = args[0];
         int threadCount = Integer.parseInt(args[1]);
         float containsPercentage = Float.parseFloat(args[2]);
-
         runBenchmark(setType, threadCount, containsPercentage);
     }
-
     private static void runBenchmark(String setType, int threadCount, float containsPercentage) throws Exception {
         ADD_LIMIT = (1 - containsPercentage) / 2;
         REMOVE_LIMIT = ADD_LIMIT + (1 - containsPercentage) / 2;
-
         mySet = getSet(setType);
         containsResults = new boolean[threadCount * BYTE_PADDING];
 
@@ -115,7 +108,7 @@ public class Benchmark {
     }
 
     private static void writeResultToCSV(String setType, int threadCount, float containsPercentage, double throughput) {
-        String fileName = "benchmark.csv";
+        String fileName = "benchmark_results.csv";
         boolean fileExists = new File(fileName).exists();
 
         try (FileWriter writer = new FileWriter(fileName, true)) {
